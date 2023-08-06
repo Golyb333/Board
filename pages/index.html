@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anonim board</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #f5f5f5;
+    }
+
+    #container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    #messages {
+      padding: 20px;
+      border-radius: 10px;
+      border: 1px solid #ddd;
+      background-color: #fff;
+    }
+
+    .message {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 5px;
+      background-color: #f7f7f7;
+      box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+    }
+
+    .content {
+      flex-grow: 1;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+    }
+
+    .actions button {
+      margin-left: 10px;
+      background-color: #E60909;
+      color: #ffffff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 5px 10px;
+      transition: background-color 0.3s ease;
+    }
+
+    .actions button:hover {
+      background-color: #D50505;
+    }
+
+    .timestamp {
+      font-size: 12px;
+      color: #888;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      background-color: #f2f2f2;
+      margin-bottom: 10px;
+    }
+
+    #send-container {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+    }
+
+    button#send {
+      padding: 10px 20px;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <h1>Anonim board</h1>
+    <span id="online-count">0 users online</span>
+    <div id="messages"></div>
+    <input type="text" id="message" placeholder="Enter your message" minlength="1" maxlength="300">
+    <div id="send-container">
+      <button id="send">Send</button>
+    </div>
+  </div>
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    document.querySelector('#send').addEventListener('click', () => {
+      const message = document.querySelector('#message').value;
+      if (message.length >= 1 && message.length <= 300) {
+        socket.emit('message', message);
+        document.querySelector('#message').value = '';
+      } else {
+        alert('Message length must be between 1 and 300 characters.');
+      }
+    });
+
+    socket.on('history', (history) => {
+      const messages = document.querySelector('#messages');
+      messages.innerHTML = '';
+      history.forEach((message, index) => {
+        displayMessage(messages, message, index);
+      });
+    });
+
+    socket.on('message', (data) => {
+      const messages = document.querySelector('#messages');
+      displayMessage(messages, data, messages.children.length);
+    });
+
+    socket.on('userCount', (count) => {
+      const onlineCountElem = document.getElementById('online-count');
+      onlineCountElem.textContent = `${count} ${count === 1 ? 'user' : 'users'} online`;
+    });
+    
+    socket.on('update', (updatedMessages) => {
+      const messages = document.querySelector('#messages');
+      messages.innerHTML = '';
+      updatedMessages.forEach((message, index) => {
+        displayMessage(messages, message, index);
+      });
+    });
+
+    function displayMessage(container, message, index) {
+      const messageElem = document.createElement('div');
+      messageElem.className = 'message';
+    
+      const contentElem = document.createElement('p');
+      contentElem.textContent = message.content;
+    
+      const timestampElem = document.createElement('span');
+      timestampElem.className = 'timestamp';
+      timestampElem.textContent = message.timestamp;
+    
+      const actionsElem = document.createElement('div');
+    
+      const likeButton = document.createElement('button');
+      likeButton.textContent = `👍 ${message.likes}`;
+      likeButton.addEventListener('click', () => {
+        socket.emit('like', index);
+      });
+    
+      const dislikeButton = document.createElement('button');
+      dislikeButton.textContent = `👎 ${message.dislikes}`;
+      dislikeButton.addEventListener('click', () => {
+        socket.emit('dislike', index);
+      });
+    
+      const reportButton = document.createElement('button');
+      reportButton.textContent = `🚩 Report`;
+      reportButton.addEventListener('click', () => {
+        socket.emit('report', index);
+      });
+    
+      actionsElem.appendChild(likeButton);
+      actionsElem.appendChild(dislikeButton);
+      actionsElem.appendChild(reportButton);
+    
+      messageElem.appendChild(contentElem);
+      messageElem.appendChild(timestampElem);
+      messageElem.appendChild(actionsElem);
+    
+      container.appendChild(messageElem);
+    }
+  </script>
+</body>
+</html>
